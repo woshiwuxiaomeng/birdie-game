@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset = "utf-8">
+  <title>Flappy Bird</title>
+
+  <style type="text/css">
+/*
+ 5.障碍物动起来
+ */
+  #canvas {
+    background-color: red;
+  }
+  </style>
+
+  <script type="text/javascript">
+  //––––––––––––––––––2.定义全局变量–––––––––––––––––––––
+  var context;  //画布
+
+  var birdArr = ["images/0.gif","images/1.gif","images/2.gif"];
+  var index = 0;
+
+  //模拟小鸟下降
+  var ver1 = 10;
+  var ver2 = 0;
+  var g = 2;
+
+  //障碍物移动
+  var velocity = 8;
+
+  //定义定时器
+  var tid;
+
+  //开始统计分数
+  var isScore = true;
+  var score = 0;
+
+  var isOver;
+
+
+  //––––––––––––––––––3.创建对象–––––––––––––––––––––––––
+  //1>.背景对象
+  var back = new Background(0,0,400,600,"images/bg.png");
+  //2>.地面对象
+  var groundBack = new Background(0,550,400,200,"images/ground.png");
+  //3>.创建上方障碍物对象
+  var upPipe = new UpPipe(200,0,100,200,"images/pipe.png");
+  //4>.创建下方障碍物对象
+  var downPipe = new DownPipe(200,350,100,200,"images/pipe.png");
+  //5>.小鸟对象
+  var bird = new Bird(50,200,40,40,"images/0.gif");
+
+
+  //––––––––––––––––––4.创建对象需要的方法––––––––––––––––
+  //1>.背景
+  function Background(x,y,w,h,img) {
+      this.x = x;
+      this.y = y;
+      this.w = w;
+      this.h = h;
+
+      var image = new Image();
+      image.src = img;     //给当前的图片标签赋值图片
+      this.img = image;
+
+      this.draw = drawbg;   //将画背景图片的方法保存到 draw 属性中,然后进行调用
+  }
+  //画背景图片
+  function drawbg() {
+    context.drawImage(this.img,this.x,this.y,this.w,this.h);
+  }
+
+  //2>.上方障碍物
+  function UpPipe(x,y,w,h,img) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+
+    var image = new Image();
+    image.src = img;
+    this.image = image;
+
+    this.draw = UpPipeDraw;
+  }
+  //画上方障碍物
+  function UpPipeDraw() {
+    context.drawImage(this.image,150,490,150,800,this.x,this.y,this.w,this.h);
+  }
+
+  //3>.下方障碍物
+  function DownPipe(x,y,w,h,img) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+
+    var image = new Image();
+    image.src = img;
+    this.image = image;
+
+    this.draw = DownPipeDraw;
+  }
+  //画上方障碍物
+  function DownPipeDraw() {
+    context.drawImage(this.image,0,480,150,500,this.x,this.y,this.w,this.h);
+  }
+
+  //4>.创建小鸟的构造函数
+  function Bird(x,y,w,h,img) {
+    this.x = x;
+    this.y = y;
+    this.w = w;
+    this.h = h;
+
+    this.draw = DrawBird;
+  }
+  //画小鸟
+  function DrawBird() {
+
+    index++;
+
+    var image = new Image();
+    image.src = birdArr[index%3];
+    this.image = image;
+
+    _this = this;
+
+    image.onload = function() {
+      context.drawImage(_this.image,_this.x,_this.y,_this.w,_this.h);
+    }
+  }
+
+  //–––––––––––––––––––5.循环调用的方法–––––––––––––––––––
+  function calculator() {
+    //1>模仿小鸟的重力下降
+    //h = gt^2/2;
+    ver2 = ver1 + g;
+    bird.y += (ver2 + ver1) * 0.5;
+
+    //2>.障碍物移动
+    if(upPipe.x + upPipe.w >= 0) {
+      //向左移动
+      upPipe.x -= velocity;
+      downPipe.x -= velocity;
+    } else {
+      //障碍物移出画布
+      upPipe.x = 400;
+      downPipe.x = 400;
+
+      //重新设置障碍物的高度
+      upPipe.h = 100 + Math.random()*200;
+      downPipe.y = upPipe.h + 200;
+      downPipe.h = 600 - downPipe.y;
+
+      //新柱子,能够进行计分
+      isScore = true;
+    }
+
+  //3>碰撞处理
+  //地面碰撞条件
+  var groundCondition = ((bird.y + bird.h) >= groundBack.y);
+  //上方障碍物的碰撞条件
+  var upCondition = (
+                      ((bird.x + bird.w) >= upPipe.x) &&
+                      ((bird.x + bird.w) < (upPipe.x + upPipe.w)) &&
+                      (bird.y > upPipe.y) &&
+                      (bird.y < (upPipe.y + upPipe.h))
+                    );
+  //下方障碍物碰撞条件
+  var downCondition  = (
+                          ((bird.x + bird.w) >= downPipe.x) &&
+                          ((bird.x + bird.w) < (downPipe.x + downPipe.w)) &&
+                          (bird.y > downPipe.y) &&
+                          (bird.y < (downPipe.y + downPipe.h))
+                        ) ||
+                        (
+                          ((bird.x + bird.w) >= downPipe.x) &&
+                          ((bird.x + bird.w) < (downPipe.x + downPipe.w)) &&
+                          ((bird.y + bird.h) > downPipe.y) &&
+                          ((bird.y + bird.h) < (downPipe.y + downPipe.h))
+                          ) ;
+  if(groundCondition || upCondition || downCondition) {
+    //符合碰撞条件
+    //停止定时器
+    clearInterval(tid);
+
+    isOver = true;
+
+    //游戏结束,显示分数
+    context.font = "50px 宋体";
+    context.fillText("get: " + score + "!!!",100,100);
+    return;
+  }
+
+  //4>统计分数
+  //两个条件
+  if(isScore && bird.x > (upPipe.x + upPipe.w)) {
+    score += 1;
+
+    isScore = false;
+
+    //增加难度
+    if(score > 0 && score%3 == 0) {
+      velocity += 20;
+    }
+
+    context.fillStyle = "rgb(255,255,255)";
+    context.font = "50px 宋体";
+    context.fillText( score,180,120);
+  }
+
+}
+
+  //–––––––––––––––––––6.点击键盘,让小鸟飞起来––––––––––––––––––
+  function KeyUp(e) {
+    //浏览器兼容问题
+    e = e || event;
+    var currentKey = e.keyCode || e.which || e.charCode;
+    switch(currentKey) {
+      case 32:
+      bird.y -= 80;
+      break;
+    }
+  }
+
+
+  //––––––––––––––––––––––––7.点击屏幕,游戏重新开始––––––––––––––
+  function ReAction() {
+    if(isOver) {
+      isOver = false;
+      //刷新界面
+      window.location.reload();
+    }
+  }
+
+  //––––––––––––––––––1.初始化方法,获取画布––––––––––––––––
+  function init() {
+    context = document.getElementById("canvas").getContext("2d");
+
+    document.onkeyup = KeyUp;
+
+    document.onclick = ReAction;
+
+    //开启定时器
+    tid = setInterval(DrawAll, 80);
+  }
+
+  function DrawAll() {
+
+    //每次绘制之前,清除之前的窗口
+    context.clearRect(0,0,400,600);
+
+     //画背景图片
+    back.draw();
+
+    //画出上方障碍物
+    upPipe.draw();
+
+    //画下方障碍物
+    downPipe.draw();
+
+    //画出地面图片
+    groundBack.draw();
+
+    //画小鸟
+    bird.draw();
+
+    calculator();
+  }
+  </script >
+
+<body onload = "init()">
+<!-- 创建画布 -->
+  <canvas id="canvas" width= 400 height=600 style="margin-left:200px"></canvas>
+</body>
+</html>
+
